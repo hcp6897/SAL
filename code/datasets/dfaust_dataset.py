@@ -1,11 +1,11 @@
-
+import os
+import torch
 import torch.utils.data as data
 from utils.general import *
 import utils.general as utils
 import logging
 
 class DFaustDataSet(data.Dataset):
-
     def __init__(self,split,dataset_path,dist_file_name,with_gt = False):
         base_dir = dataset_path
         self.npyfiles_mnfld = self.get_instance_filenames(base_dir,split)
@@ -17,8 +17,6 @@ class DFaustDataSet(data.Dataset):
             self.gt_files = self.get_instance_filenames(utils.concat_home_dir('datasets/dfaust/scripts'),split,'','obj')
             self.scans_files = self.get_instance_filenames(utils.concat_home_dir('datasets/dfaust/scans'), split,'','ply')
             self.shapenames = [x.split('/')[-1].split('.obj')[0] for x in self.gt_files]
-
-
 
     def get_instance_filenames(self,base_dir,split,ext='',format='npy'):
         npyfiles = []
@@ -38,7 +36,6 @@ class DFaustDataSet(data.Dataset):
         return npyfiles
 
     def __getitem__(self, index):
-
         point_set_mnlfld = torch.from_numpy(np.load(self.npyfiles_mnfld[index])).float()
         sample_non_mnfld = torch.from_numpy(np.load(self.npyfiles_dist[index])).float()
         random_idx = (torch.rand(128**2) * point_set_mnlfld.shape[0]).long()
@@ -48,7 +45,6 @@ class DFaustDataSet(data.Dataset):
         sample_non_mnfld = torch.index_select(sample_non_mnfld,0,random_idx)
 
         return point_set_mnlfld[:,:3],sample_non_mnfld,index
-
 
     def __len__(self):
         return len(self.npyfiles_mnfld)
