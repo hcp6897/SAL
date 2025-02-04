@@ -32,6 +32,7 @@ class SimplePointnet_VAE(nn.Module):
         self.fc_3 = nn.Linear(2*hidden_dim, hidden_dim)
         self.fc_mean = nn.Linear(hidden_dim, c_dim)
         self.fc_std = nn.Linear(hidden_dim, c_dim)
+
         torch.nn.init.constant_(self.fc_mean.weight,0)
         torch.nn.init.constant_(self.fc_mean.bias, 0)
 
@@ -42,7 +43,6 @@ class SimplePointnet_VAE(nn.Module):
         self.pool = maxpool
 
     def forward(self, p):
-
         net = self.fc_pos(p)
         net = self.fc_0(self.actvn(net))
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
@@ -122,10 +122,12 @@ class Decoder(nn.Module):
                 lin = nn.utils.weight_norm(lin)
 
             setattr(self, "lin" + str(l), lin)
+        
         self.use_activation = not activation == 'None'
 
         if self.use_activation:
             self.last_activation = utils.get_class(activation)()
+        
         self.relu = nn.ReLU()
 
         self.dropout_prob = dropout_prob
@@ -163,11 +165,14 @@ class Decoder(nn.Module):
 class SALNetwork(nn.Module):
     def __init__(self,conf,latent_size):
         super().__init__()
+        
         self.decoder = Decoder(latent_size=latent_size,**conf.get_config('decoder'))
+        
         if (latent_size > 0):
             self.encoder = SimplePointnet_VAE(hidden_dim=2*latent_size,c_dim=latent_size)
         else:
             self.encoder = None
+        
         self.decode_mnfld_pnts = conf.get_bool('decode_mnfld_pnts')
 
     def forward(self, non_mnfld_pnts,mnfld_pnts):
@@ -178,11 +183,9 @@ class SALNetwork(nn.Module):
             latent_reg = 1.0e-3*(q_latent_mean.abs().mean(dim=-1) + (q_latent_std + 1).abs().mean(dim=-1))
 
             # Out of manfiold points
-            non_mnfld_pnts = torch.cat([latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1),
-                                                    non_mnfld_pnts], dim=-1)
+            non_mnfld_pnts = torch.cat([latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], dim=-1)
         else:
             latent_reg = None
-
 
         nonmanifold_pnts_pred = self.decoder(non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1]))
         manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) if (self.decode_mnfld_pnts) else None

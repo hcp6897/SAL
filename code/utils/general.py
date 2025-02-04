@@ -174,7 +174,7 @@ def load_point_cloud_by_file_extension(file_name, compute_normals=False):
     return v, n
 
 
-def configure_logging(debug,quiet,logfile):
+def configure_logging(debug, quiet, logfile):
     logger = logging.getLogger()
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -193,8 +193,8 @@ def configure_logging(debug,quiet,logfile):
         logger.addHandler(file_logger_handler)
 
 
-def compute_trimesh_chamfer(gt_points, gen_mesh, offset, scale, num_mesh_samples=30000,one_side=False):
-    """
+def compute_trimesh_chamfer(gt_points, gen_mesh, offset, scale, num_mesh_samples=30000, one_side=False):
+    r"""
     This function computes a symmetric chamfer distance, i.e. the sum of both chamfers.
 
     gt_points: trimesh.points.PointCloud of just poins, sampled from the surface (see
@@ -202,9 +202,7 @@ def compute_trimesh_chamfer(gt_points, gen_mesh, offset, scale, num_mesh_samples
 
     gen_mesh: trimesh.base.Trimesh of output mesh from whichever autoencoding reconstruction
               method (see compute_metrics.py for more)
-
     """
-
     gen_points_sampled = trimesh.sample.sample_surface(gen_mesh, num_mesh_samples)[0]
 
     gen_points_sampled = gen_points_sampled / scale - offset

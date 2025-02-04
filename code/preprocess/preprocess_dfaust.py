@@ -1,25 +1,25 @@
 from __future__ import print_function
+
+import os
 import sys
 sys.path.append('../code')
-import argparse
 
-import utils.general as utils
+import json
+import argparse
 import trimesh
 from trimesh.sample import sample_surface
-import os
 import numpy as np
-import json
 
 from scipy.spatial import cKDTree
 from CGAL.CGAL_Kernel import Point_3
 from CGAL.CGAL_Kernel import Triangle_3
 from CGAL.CGAL_AABB_tree import AABB_tree_Triangle_3_soup
 
+import utils.general as utils
+
 
 def as_mesh(scene_or_mesh):
-    """
-    Convert a possible scene to a mesh.
-
+    r"""Convert a possible scene to a mesh.
     If conversion occurs, the returned mesh has only vertex and face data.
     """
     if isinstance(scene_or_mesh, trimesh.Scene):
@@ -28,8 +28,8 @@ def as_mesh(scene_or_mesh):
         else:
             # we lose texture information here
             mesh = trimesh.util.concatenate(
-                tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
-                    for g in scene_or_mesh.geometry.values()))
+                tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces) 
+                      for g in scene_or_mesh.geometry.values()))
     else:
         assert(isinstance(scene_or_mesh, trimesh.Trimesh))
         mesh = scene_or_mesh
@@ -40,9 +40,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, required=True, help="Path of unzipped d-faust scans.")
     parser.add_argument('--split', type=str, default='../confs/splits/dfaust/train_all_every5.json', help="Split file name.")
-    parser.add_argument('--shapeindex', type=int,required=True, help="Shape index to be preprocessed. -1 for all")
-    parser.add_argument('--skip', action="store_true",default=False)
-    parser.add_argument('--sigma', type=float,default=0.2)
+    parser.add_argument('--shapeindex', type=int, required=True, help="Shape index to be preprocessed. -1 for all")
+    parser.add_argument('--skip', action="store_true", default=False)
+    parser.add_argument('--sigma', type=float, default=0.2)
 
     opt = parser.parse_args()
 

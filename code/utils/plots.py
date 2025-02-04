@@ -6,8 +6,9 @@ from skimage import measure
 import os
 from tqdm import tqdm
 import utils.general as utils
-def get_threed_scatter_trace(points,caption = None,colorscale = None,color = None):
 
+
+def get_threed_scatter_trace(points,caption = None,colorscale = None,color = None):
     # assert points.shape[1] == 3, "3d scatter plot input points are not correctely shaped "
     # assert len(points.shape) == 2, "3d scatter plot input points are not correctely shaped "
     if (type(points) == list):
@@ -49,6 +50,7 @@ def get_threed_scatter_trace(points,caption = None,colorscale = None,color = Non
 
     return trace
 
+
 def plot_threed_scatter(points,path,epoch,in_epoch):
     trace = get_threed_scatter_trace(points)
     layout = go.Layout(width=1200, height=1200, scene=dict(xaxis=dict(range=[-2, 2], autorange=False),
@@ -61,7 +63,9 @@ def plot_threed_scatter(points,path,epoch,in_epoch):
     filename = '{0}/scatter_iteration_{1}_{2}.html'.format(path, epoch, in_epoch)
     offline.plot(fig1, filename=filename, auto_open=False)
 
-def plot_surface(with_points,points,decoder,latent,path,epoch,in_epoch,shapefile,resolution,mc_value,is_uniform_grid,verbose,save_html,save_ply,overwrite):
+
+def plot_surface(with_points,points,decoder,latent,path,epoch,in_epoch,shapefile,resolution,mc_value,
+                 is_uniform_grid,verbose,save_html,save_ply,overwrite):
     if (is_uniform_grid):
         filename = '{0}/uniform_iteration_{1}_{2}.html'.format(path, epoch, in_epoch)
     else:
@@ -93,8 +97,8 @@ def plot_surface(with_points,points,decoder,latent,path,epoch,in_epoch,shapefile
             surface['mesh_export'].export(filename + '.ply', 'ply')
         return surface['mesh_export']
 
-def get_surface_trace(points,decoder,latent,resolution,mc_value,is_uniform,verbose,save_ply):
 
+def get_surface_trace(points,decoder,latent,resolution,mc_value,is_uniform,verbose,save_ply):
     trace = []
     meshexport = None
 
@@ -141,10 +145,9 @@ def get_surface_trace(points,decoder,latent,resolution,mc_value,is_uniform,verbo
                           i=I, j=J, k=K, name='',
                           color='orange', opacity=0.5))
 
-
-
     return {"mesh_trace":trace,
             "mesh_export":meshexport}
+
 
 def plot_cuts_axis(points,decoder,latent,path,epoch,near_zero,axis,file_name_sep='/'):
     onedim_cut = np.linspace(-1.0, 1.0, 200)
@@ -215,6 +218,7 @@ def plot_cuts_axis(points,decoder,latent,path,epoch,near_zero,axis,file_name_sep
         filename = '{0}{1}cutsaxis_{2}_{3}_{4}.html'.format(path,file_name_sep,axis, epoch, index)
         fig1 = go.Figure(data=[trace1], layout=layout)
         offline.plot(fig1, filename=filename, auto_open=False)
+
 
 def plot_cuts(points,decoder,path,epoch,in_epoch,near_zero,latent):
     onedim_cut = np.linspace(-1, 1, 200)
@@ -308,6 +312,7 @@ def get_grid(points,resolution):
             "shortest_axis_length":length,
             "xyz":[x,y,z],
             "shortest_axis_index":shortest_axis}
+
 
 def get_grid_uniform(points,resolution):
     x = np.linspace(-1.2,1.2, resolution)
