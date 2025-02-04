@@ -5,9 +5,11 @@ import trimesh
 import logging
 from scipy.spatial import cKDTree as KDTree
 
+
 def mkdir_ifnotexists(directory):
     if not os.path.exists(directory):
         os.mkdir(directory)
+
 
 def as_mesh(scene_or_mesh):
     """
@@ -31,13 +33,17 @@ def as_mesh(scene_or_mesh):
 def concat_home_dir(path):
     return os.path.join(os.environ['HOME'],'data',path)
 
+
 def get_item(list,idx):
     if (len(list) > 0):
         return list[idx]
     else:
         return None
+    
+
 def threshold_min_max(tensor, min_vec, max_vec):
     return torch.min(max_vec, torch.max(tensor, min_vec))
+
 
 def to_tuple(x):
     if isinstance(x, tuple):
@@ -63,6 +69,7 @@ def get_cuda_ifavailable(torch_obj):
     else:
         return torch_obj
 
+
 def get_dist_matrix(a,b):
     x, y = a, b
 
@@ -87,8 +94,8 @@ def get_batch_dist_matrix(a, b):
 
     return P_mine
 
-def fps_2( points, B):
 
+def fps_2( points, B):
     r = np.sum(points * points, 1)
     r = np.expand_dims(r, axis=1)
     distance = r - 2 * np.matmul(points, np.transpose(points, [1, 0])) + np.transpose(r, [1, 0])
@@ -147,6 +154,7 @@ def load_srb_range_scan(file_name):
             n.append((nx, ny, nz))
     return np.array(v), np.array(n)
 
+
 def load_point_cloud_by_file_extension(file_name, compute_normals=False):
     import point_cloud_utils as pcu
     if file_name.endswith(".obj"):
@@ -164,6 +172,7 @@ def load_point_cloud_by_file_extension(file_name, compute_normals=False):
     if compute_normals and f.shape[0] > 0:
         n = pcu.per_vertex_normals(v, f)
     return v, n
+
 
 def configure_logging(debug,quiet,logfile):
     logger = logging.getLogger()

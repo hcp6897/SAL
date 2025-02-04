@@ -9,10 +9,8 @@ import json
 import logging
 
 
-
 class BaseTrainRunner():
     def __init__(self,**kwargs):
-
         if (type(kwargs['conf']) == str):
             self.conf = ConfigFactory.parse_file(kwargs['conf'])
             self.conf_filename = kwargs['conf']
@@ -138,7 +136,6 @@ class BaseTrainRunner():
             self.start_epoch = saved_model_state['epoch']
 
     def get_learning_rate_schedules(schedule_specs):
-
         schedules = []
 
         for schedule_specs in schedule_specs:
@@ -166,7 +163,6 @@ class BaseTrainRunner():
             param_group["lr"] = self.lr_schedules[i].get_learning_rate(epoch)
 
     def save_checkpoints(self,epoch):
-
         torch.save(
             {"epoch": epoch, "model_state_dict": self.network.state_dict()},
             os.path.join(self.checkpoints_path, self.model_params_subdir, str(epoch) + ".pth"))

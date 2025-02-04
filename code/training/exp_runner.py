@@ -5,9 +5,7 @@ from training.sal_training import SalTrainRunner
 import GPUtil
 
 
-
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=64, help='Input batch size.')
     parser.add_argument('--nepoch', type=int, default=2000, help='Number of epochs to train.')
@@ -31,20 +29,18 @@ if __name__ == '__main__':
     else:
         gpu = opt.gpu
 
-
-
     trainrunner = SalTrainRunner(conf=opt.conf,
-                                      batch_size=opt.batch_size,
-                                      nepochs=opt.nepoch,
-                                      expname=opt.expname,
-                                      gpu_index=gpu,
-                                      exps_folder_name='exps',
-                                      parallel=opt.parallel,
-                                      workers=opt.workers,
-                                      is_continue=opt.is_continue,
-                                      timestamp=opt.timestamp,
-                                      checkpoint=opt.checkpoint,
+                                batch_size=opt.batch_size,
+                                nepochs=opt.nepoch,
+                                expname=opt.expname,
+                                gpu_index=gpu,
+                                exps_folder_name='exps',
+                                parallel=opt.parallel,
+                                workers=opt.workers,
+                                is_continue=opt.is_continue,
+                                timestamp=opt.timestamp,
+                                checkpoint=opt.checkpoint,
                                 debug=opt.debug,
-                                 quiet=opt.quiet)
+                                quiet=opt.quiet)
 
     trainrunner.run()

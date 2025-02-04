@@ -15,6 +15,7 @@ from CGAL.CGAL_Kernel import Point_3
 from CGAL.CGAL_Kernel import Triangle_3
 from CGAL.CGAL_AABB_tree import AABB_tree_Triangle_3_soup
 
+
 def as_mesh(scene_or_mesh):
     """
     Convert a possible scene to a mesh.
@@ -36,8 +37,6 @@ def as_mesh(scene_or_mesh):
 
 
 if __name__ == '__main__':
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, required=True, help="Path of unzipped d-faust scans.")
     parser.add_argument('--split', type=str, default='../confs/splits/dfaust/train_all_every5.json', help="Split file name.")
@@ -45,9 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip', action="store_true",default=False)
     parser.add_argument('--sigma', type=float,default=0.2)
 
-
     opt = parser.parse_args()
-
 
     with open(opt.split, "r") as f:
         train_split = json.load(f)
@@ -57,7 +54,6 @@ if __name__ == '__main__':
     global_shape_index = 0
     for human,scans in train_split['scans'].items():
         for pose,shapes in scans.items():
-
             source = '{0}/{1}/{2}/{3}'.format(opt.datapath,'scans',human,pose)
             output = opt.datapath + '_processed'
             utils.mkdir_ifnotexists(output)
