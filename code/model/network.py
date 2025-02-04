@@ -12,7 +12,8 @@ def maxpool(x, dim=-1, keepdim=False):
 
 
 class SimplePointnet_VAE(nn.Module):
-    ''' PointNet-based encoder network. Based on: https://github.com/autonomousvision/occupancy_networks
+    ''' PointNet-based encoder network. 
+    Based on: https://github.com/autonomousvision/occupancy_networks
 
     Args:
         c_dim (int): dimension of latent code c
@@ -62,10 +63,12 @@ class SimplePointnet_VAE(nn.Module):
         c_mean = self.fc_mean(self.actvn(net))
         c_std = self.fc_std(self.actvn(net))
 
-        return c_mean,c_std
+        return c_mean, c_std
+
 
 class Decoder(nn.Module):
-    '''  Based on: https://github.com/facebookresearch/DeepSDF
+    '''  
+    Based on: https://github.com/facebookresearch/DeepSDF
     '''
     def __init__(
         self,
@@ -81,7 +84,6 @@ class Decoder(nn.Module):
         latent_dropout=False,
     ):
         super().__init__()
-
 
         dims = [latent_size + 3] + dims + [1]
 
@@ -157,6 +159,7 @@ class Decoder(nn.Module):
 
         return x
 
+
 class SALNetwork(nn.Module):
     def __init__(self,conf,latent_size):
         super().__init__()
@@ -184,6 +187,6 @@ class SALNetwork(nn.Module):
         nonmanifold_pnts_pred = self.decoder(non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1]))
         manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) if (self.decode_mnfld_pnts) else None
 
-        return {"manifold_pnts_pred":manifold_pnts_pred,
-                "nonmanifold_pnts_pred":nonmanifold_pnts_pred,
+        return {"manifold_pnts_pred" : manifold_pnts_pred,
+                "nonmanifold_pnts_pred" : nonmanifold_pnts_pred,
                 "latent_reg" : latent_reg}
