@@ -71,6 +71,7 @@ if __name__ == '__main__':
                         print ('loading : {0}'.format(os.path.join(source, shape)))
                         mesh = trimesh.load(os.path.join(source, shape) + '.ply')
                         
+                        # 采样点云
                         sample = sample_surface(mesh, 250000)   # 250000 points
                         center = np.mean(sample[0], axis=0)
                         pnts = sample[0]
@@ -78,20 +79,21 @@ if __name__ == '__main__':
                         scale = 1
                         pnts = pnts/scale
                         
-                        triangles = []  # triangles soups
+                        # 采样三角面片
+                        triangles = []  # triangle soups
                         for tri in mesh.triangles:
                             a = Point_3((tri[0][0] - center[0])/scale, (tri[0][1]- center[1])/scale, (tri[0][2]- center[2])/scale)
                             b = Point_3((tri[1][0]- center[0])/scale, (tri[1][1]- center[1])/scale, (tri[1][2]- center[2])/scale)
                             c = Point_3((tri[2][0]- center[0])/scale, (tri[2][1]- center[1])/scale, (tri[2][2]- center[2])/scale)
                             triangles.append(Triangle_3(a, b, c))
                         
-                        tree = AABB_tree_Triangle_3_soup(triangles) # AABB tree for triangles
+                        tree = AABB_tree_Triangle_3_soup(triangles) # AABB tree for triangle soups
 
                         # 计算点云中每个点的第51个最近邻点的距离，并将其保存到一个数组中.
                         sigmas = []
                         ptree = cKDTree(pnts) # KDTree for points
                         i = 0
-                        for p in np.array_split(pnts, 100, axis=0):
+                        for p in np.array_split(pnts, 100, axis=0): # split pnts into 100 parts
                             d = ptree.query(p, 51)
                             sigmas.append(d[0][:, -1])
 
@@ -107,6 +109,7 @@ if __name__ == '__main__':
                              pnts + np.expand_dims(sigmas_big,-1) * np.random.normal(0.0,1.0, size=pnts.shape)], 
                             axis=0)
 
+                        # 
                         dists = []
                         for np_query in sample:
                             cgal_query = Point_3(np_query[0].astype(np.double), np_query[1].astype(np.double), np_query[2].astype(np.double))
@@ -120,8 +123,7 @@ if __name__ == '__main__':
                         np.save(output_file + '_dist_triangle.npy',
                                 np.concatenate([sample, np.expand_dims(dists, axis=-1)], axis=-1))
 
-                        np.save(output_file + '_normalization.npy',
-                                {"center":center,"scale":scale})
+                        np.save(output_file + '_normalization.npy', {"center":center,"scale":scale})
 
                 global_shape_index = global_shape_index + 1
 
