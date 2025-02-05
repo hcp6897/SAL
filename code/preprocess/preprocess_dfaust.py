@@ -89,41 +89,46 @@ if __name__ == '__main__':
                         
                         tree = AABB_tree_Triangle_3_soup(triangles) # AABB tree for triangle soups
 
-                        # 计算点云中每个点的第51个最近邻点的距离，并将其保存到一个数组中.
+                        # 为点云中的每个点定义两个不同的噪声标准差 sigmas 和 sigmas_big, 可以理解为该点的局部密度或噪声水平.
                         sigmas = []
                         ptree = cKDTree(pnts) # KDTree for points
                         i = 0
+                        # 计算点云中每个点的第51个最近邻点的距离
                         for p in np.array_split(pnts, 100, axis=0): # split pnts into 100 parts
-                            d = ptree.query(p, 51)
-                            sigmas.append(d[0][:, -1])
+                            d = ptree.query(p, 51) # 返回两个数组：第一个数组是距离，第二个数组是索引. 
+                            sigmas.append(d[0][:, -1]) # 对于每个点，提取第 51 个最近邻点的距离，并将其添加到 sigmas 列表中. 
 
                             i = i+1
 
                         sigmas = np.concatenate(sigmas)
                         sigmas_big = opt.sigma * np.ones_like(sigmas)
 
+                        # 保存点云
                         np.save(output_file + '.npy', pnts)
 
+                        # 通过添加随机噪声来生成新的样本点，使用两个不同的噪声标准差（sigmas 和 sigmas_big）来对原始点集 pnts 进行扰动，然后将扰动后的点集拼接在一起.
                         sample = np.concatenate(
                             [pnts + np.expand_dims(sigmas, -1) * np.random.normal(0.0, 1.0, size=pnts.shape), 
                              pnts + np.expand_dims(sigmas_big, -1) * np.random.normal(0.0, 1.0, size=pnts.shape)], 
                             axis=0)
 
-                        # 
+                        # 计算一组查询点（sample）到最近三角形网格的距离
                         dists = []
                         for np_query in sample:
                             cgal_query = Point_3(np_query[0].astype(np.double), np_query[1].astype(np.double), np_query[2].astype(np.double))
+                            
+                            cp = tree.closest_point(cgal_query)  # 计算查询点到最近三角面片上的点 cp
+                            cp = np.array([cp.x(), cp.y(), cp.z()])  # 将 cp 转换为 numpy 数组
+                            dist = np.sqrt(((cp - np_query)**2).sum(axis=0))  # 计算 np_query 到 cp 的距离
 
-                            cp = tree.closest_point(cgal_query)
-                            cp = np.array([cp.x(), cp.y(), cp.z()])
-                            dist = np.sqrt(((cp - np_query)**2).sum(axis=0))
+                            dists.append(dist)  # 将距离添加到 dists 列表中
 
-                            dists.append(dist)
-                        dists = np.array(dists)
+                        dists = np.array(dists)  # 将 dists 列表转换为 numpy 数组
                         np.save(output_file + '_dist_triangle.npy',
-                                np.concatenate([sample, np.expand_dims(dists, axis=-1)], axis=-1))
+                                np.concatenate([sample, np.expand_dims(dists, axis=-1)], axis=-1))  # 将查询点 sample和对应的距离 dists 合并为一个数组.
 
-                        np.save(output_file + '_normalization.npy', {"center":center,"scale":scale})
+                        np.save(output_file + '_normalization.npy', 
+                                {"center":center, "scale":scale})  # 将归一化参数 center 和 scale 保存为一个字典，并保存为 npy 文件.
 
                 global_shape_index = global_shape_index + 1
 
