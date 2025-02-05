@@ -105,8 +105,8 @@ if __name__ == '__main__':
                         np.save(output_file + '.npy', pnts)
 
                         sample = np.concatenate(
-                            [pnts + np.expand_dims(sigmas,-1) * np.random.normal(0.0, 1.0, size=pnts.shape), 
-                             pnts + np.expand_dims(sigmas_big,-1) * np.random.normal(0.0,1.0, size=pnts.shape)], 
+                            [pnts + np.expand_dims(sigmas, -1) * np.random.normal(0.0, 1.0, size=pnts.shape), 
+                             pnts + np.expand_dims(sigmas_big, -1) * np.random.normal(0.0, 1.0, size=pnts.shape)], 
                             axis=0)
 
                         # 
