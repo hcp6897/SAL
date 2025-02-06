@@ -51,7 +51,7 @@ if __name__ == '__main__':
         train_split = json.load(f)
 
     shapeindex = opt.shapeindex
-    global_shape_index = 0
+    global_shapeindex = 0
 
     for human, scans in train_split['scans'].items():
         for pose, shapes in scans.items():
@@ -62,7 +62,7 @@ if __name__ == '__main__':
             utils.mkdir_ifnotexists(os.path.join(output, human, pose))
 
             for shape in shapes:
-                if (shapeindex == global_shape_index or shapeindex == -1):
+                if (shapeindex == global_shapeindex or shapeindex == -1):
                     print ("The {} has been found.".format(shape))
                     output_file = os.path.join(output, human, pose, shape)
                     print (output_file)
@@ -130,6 +130,6 @@ if __name__ == '__main__':
                         np.save(output_file + '_normalization.npy', 
                                 {"center":center, "scale":scale})  # 将归一化参数 center 和 scale 保存为一个字典，并保存为 npy 文件.
 
-                global_shape_index = global_shape_index + 1
+                global_shapeindex = global_shapeindex + 1
 
     print ("end!")
