@@ -9,6 +9,7 @@ class GenLoss(nn.Module):
         super().__init__()
         self.manifold_pnts_weight = manifold_pnts_weight
 
+
 class SALLoss(GenLoss):
     def __init__(self, manifold_pnts_weight, unsigned):
         super().__init__(manifold_pnts_weight)

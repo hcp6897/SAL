@@ -85,7 +85,7 @@ class Decoder(nn.Module):
     ):
         super().__init__()
 
-        dims = [latent_size + 3] + dims + [1]
+        dims = dims + [latent_size + 3] + [1]
 
         self.num_layers = len(dims)
         self.norm_layers = norm_layers
@@ -163,19 +163,19 @@ class Decoder(nn.Module):
 
 
 class SALNetwork(nn.Module):
-    def __init__(self,conf,latent_size):
+    def __init__(self, conf, latent_size):
         super().__init__()
         
-        self.decoder = Decoder(latent_size=latent_size,**conf.get_config('decoder'))
-        
         if (latent_size > 0):
-            self.encoder = SimplePointnet_VAE(hidden_dim=2*latent_size,c_dim=latent_size)
+            self.encoder = SimplePointnet_VAE(hidden_dim=2*latent_size, c_dim=latent_size)
         else:
             self.encoder = None
+
+        self.decoder = Decoder(latent_size=latent_size, **conf.get_config('decoder'))
         
         self.decode_mnfld_pnts = conf.get_bool('decode_mnfld_pnts')
 
-    def forward(self, non_mnfld_pnts,mnfld_pnts):
+    def forward(self, non_mnfld_pnts, mnfld_pnts):
         if not self.encoder is None:
             q_latent_mean,q_latent_std = self.encoder(mnfld_pnts)
             q_z = dist.Normal(q_latent_mean, torch.exp(q_latent_std))
