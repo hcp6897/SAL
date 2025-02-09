@@ -8,6 +8,7 @@ from torch import distributions as dist
 
 def maxpool(x, dim=-1, keepdim=False):
     out, _ = x.max(dim=dim, keepdim=keepdim)
+    
     return out
 
 
@@ -25,41 +26,55 @@ class SimplePointnet_VAE(nn.Module):
         super().__init__()
         self.c_dim = c_dim
 
+        # 空间点位置编码
         self.fc_pos = nn.Linear(dim, 2*hidden_dim)
+
+        # 网络层
         self.fc_0 = nn.Linear(2*hidden_dim, hidden_dim)
         self.fc_1 = nn.Linear(2*hidden_dim, hidden_dim)
         self.fc_2 = nn.Linear(2*hidden_dim, hidden_dim)
         self.fc_3 = nn.Linear(2*hidden_dim, hidden_dim)
+
+        # 输出层
         self.fc_mean = nn.Linear(hidden_dim, c_dim)
         self.fc_std = nn.Linear(hidden_dim, c_dim)
 
-        torch.nn.init.constant_(self.fc_mean.weight,0)
+        # 初始化输出层
+        torch.nn.init.constant_(self.fc_mean.weight, 0)
         torch.nn.init.constant_(self.fc_mean.bias, 0)
-
         torch.nn.init.constant_(self.fc_std.weight, 0)
         torch.nn.init.constant_(self.fc_std.bias, -10)
 
+        # 激活函数
         self.actvn = nn.ReLU()
+
+        # 最大池化
         self.pool = maxpool
 
     def forward(self, p):
+        # 空间点位置编码
         net = self.fc_pos(p)
+        
+        # 第0层
         net = self.fc_0(self.actvn(net))
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
+        # 第1层
         net = self.fc_1(self.actvn(net))
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
+        # 第2层
         net = self.fc_2(self.actvn(net))
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
         net = torch.cat([net, pooled], dim=2)
 
+        # 第3层
         net = self.fc_3(self.actvn(net))
-
         net = self.pool(net, dim=1)
 
+        # 输出层
         c_mean = self.fc_mean(self.actvn(net))
         c_std = self.fc_std(self.actvn(net))
 
