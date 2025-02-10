@@ -183,17 +183,18 @@ class Decoder(nn.Module):
         else:
             x = input
 
-        for l in range(0, self.num_layers - 1):
-            lin = getattr(self, "lin" + str(l))
-            if l in self.latent_input_layers:
+        for layer_idx in range(0, self.num_layers - 1):
+            linear_layer = getattr(self, "linear_layer" + str(layer_idx))
+            if layer_idx in self.latent_input_layers:
                 x = torch.cat([x, input], 1) /np.sqrt(2)
-            elif l != 0 and self.use_xyz_in_all:
+            elif layer_idx != 0 and self.use_xyz_in_all:
                 x = torch.cat([x, xyz], 1)/np.sqrt(2)
-            x = lin(x)
 
-            if l < self.num_layers - 2:
+            x = linear_layer(x)
+
+            if layer_idx < self.num_layers - 2:
                 x = self.relu(x)
-                if self.dropout is not None and l in self.dropout:
+                if self.dropout_layers is not None and layer_idx in self.dropout_layers:
                     x = F.dropout(x, p=self.dropout_prob, training=self.training)
 
         if self.use_activation:
@@ -203,33 +204,45 @@ class Decoder(nn.Module):
 
 
 class SALNetwork(nn.Module):
+
     def __init__(self, conf, latent_size):
         super().__init__()
         
-        if (latent_size > 0):
+        if latent_size > 0:
             self.encoder = SimplePointnet_VAE(hidden_dim=2*latent_size, c_dim=latent_size)
         else:
             self.encoder = None
 
         self.decoder = Decoder(latent_size=latent_size, **conf.get_config('decoder'))
         
-        self.decode_mnfld_pnts = conf.get_bool('decode_mnfld_pnts')
+        # 是否解码 manifold points
+        self.is_decode_mnfld_pnts = conf.get_bool('is_decode_mnfld_pnts')
 
     def forward(self, non_mnfld_pnts, mnfld_pnts):
+
         if not self.encoder is None:
-            q_latent_mean,q_latent_std = self.encoder(mnfld_pnts)
+            # encode manifold points to latent space: q(z|x)
+            q_latent_mean, q_latent_std = self.encoder(mnfld_pnts)
+
             q_z = dist.Normal(q_latent_mean, torch.exp(q_latent_std))
             latent = q_z.rsample()
-            latent_reg = 1.0e-3*(q_latent_mean.abs().mean(dim=-1) + (q_latent_std + 1).abs().mean(dim=-1))
 
-            # Out of manfiold points
-            non_mnfld_pnts = torch.cat([latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], dim=-1)
+            latent_reg = 1.0e-3*(q_latent_mean.abs().mean(dim=-1) + \
+                (q_latent_std + 1).abs().mean(dim=-1))
+
+            # concatenate latent vector to non-manfiold points
+            non_mnfld_pnts = torch.cat(
+                [latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], 
+                dim=-1)
         else:
             latent_reg = None
 
         nonmanifold_pnts_pred = self.decoder(non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1]))
-        manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) if (self.decode_mnfld_pnts) else None
+        manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) \
+            if self.is_decode_mnfld_pnts else None
 
-        return {"manifold_pnts_pred" : manifold_pnts_pred,
-                "nonmanifold_pnts_pred" : nonmanifold_pnts_pred,
-                "latent_reg" : latent_reg}
+        return {
+            "manifold_pnts_pred" : manifold_pnts_pred,
+            "nonmanifold_pnts_pred" : nonmanifold_pnts_pred,
+            "latent_reg" : latent_reg
+            }
