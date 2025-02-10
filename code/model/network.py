@@ -82,76 +82,101 @@ class SimplePointnet_VAE(nn.Module):
 
 
 class Decoder(nn.Module):
-    '''  
+    """主要用于将潜在编码（latent code）和3D坐标映射为SDF（Signed Distance Function）值.
     Based on: https://github.com/facebookresearch/DeepSDF
-    '''
+    """
+
     def __init__(
         self,
         latent_size,
-        dims,
-        dropout=None,
+        layer_dims,
+        dropout_layers=None,
         dropout_prob=0.0,
-        norm_layers=(),
-        latent_in=(),
-        weight_norm=False,
-        xyz_in_all=None,
+        normalized_layers=(),
+        latent_input_layers=(),
+        use_weight_norm=False,
+        use_xyz_in_all=None,
         activation=None,
-        latent_dropout=False,
+        use_latent_dropout=False,
     ):
+        r"""
+        Args:
+            latent_size (int): 潜在编码的维度.
+            layer_dims (list): 各层的维度列表.
+            dropout_layers (list, optional): 执行dropout操作的层索引. Defaults to None.
+            dropout_prob (float, optional): dropout的概率值. Defaults to 0.0.
+            normalized_layers (list, optional): 执行权重归一化的层索引. Defaults to ().
+            latent_input_layers (list, optional): 执行输入潜在编码的层索引. Defaults to ().
+            use_weight_norm (bool, optional): 使用权重归一化. Defaults to False.
+            use_xyz_in_all (bool, optional): 所有层输入3D坐标. Defaults to None.
+            activation (string, optional): 使用激活函数. Defaults to None，表示不使用任何激活函数.
+            latent_dropout (bool, optional): 潜在编码上执行dropout操作. Defaults to False.
+        """
         super().__init__()
 
-        dims = dims + [latent_size + 3] + [1]
+        layer_dims = [latent_size + 3] + layer_dims + [1]
 
-        self.num_layers = len(dims)
-        self.norm_layers = norm_layers
-        self.latent_in = latent_in
-        self.latent_dropout = latent_dropout
-        if self.latent_dropout:
+        self.num_layers = len(layer_dims)
+        self.normalized_layers = normalized_layers
+        self.latent_input_layers = latent_input_layers
+        self.use_xyz_in_all = use_xyz_in_all
+        self.use_weight_norm = use_weight_norm
+
+        self.dropout_layers = dropout_layers
+        self.dropout_prob = dropout_prob
+        
+        self.use_latent_dropout = use_latent_dropout
+        if self.use_latent_dropout:
             self.lat_dp = nn.Dropout(0.2)
-
-        self.xyz_in_all = xyz_in_all
-        self.weight_norm = weight_norm
-
-        for l in range(0, self.num_layers - 1):
-            if l + 1 in latent_in:
-                out_dim = dims[l + 1] - dims[0]
+        
+        # 创建网络层
+        for layer_idx in range(0, self.num_layers - 1):
+            if layer_idx + 1 in self.latent_input_layers:
+                output_dim = layer_dims[layer_idx + 1] - layer_dims[0]
             else:
-                out_dim = dims[l + 1]
-                if self.xyz_in_all and l != self.num_layers - 2:
-                    out_dim -= 3
-            lin = nn.Linear(dims[l], out_dim)
+                output_dim = layer_dims[layer_idx + 1]
+                if self.use_xyz_in_all and layer_idx != self.num_layers - 2:
+                    output_dim -= 3
+            
+            linear_layer = nn.Linear(layer_dims[layer_idx], output_dim)
 
-            if (l in dropout):
-                p = 1 - dropout_prob
+            if layer_idx in self.dropout_layers:
+                keep_prob = 1 - self.dropout_prob
             else:
-                p = 1.0
+                keep_prob = 1.0
 
-            if l == self.num_layers - 2:
-                torch.nn.init.normal_(lin.weight, mean=2*np.sqrt(np.pi) / np.sqrt(p * dims[l]), std=0.000001)
-                torch.nn.init.constant_(lin.bias, -1.0)
+            if layer_idx == self.num_layers - 2:
+                torch.nn.init.normal_(
+                    linear_layer.weight, 
+                    mean=2*np.sqrt(np.pi) / np.sqrt(keep_prob * layer_dims[layer_idx]), 
+                    std=0.000001)
+                torch.nn.init.constant_(linear_layer.bias, -1.0)
             else:
-                torch.nn.init.constant_(lin.bias, 0.0)
-                torch.nn.init.normal_(lin.weight, 0.0, np.sqrt(2) / np.sqrt(p*out_dim))
+                torch.nn.init.constant_(linear_layer.bias, 0.0)
+                torch.nn.init.normal_(
+                    linear_layer.weight, 
+                    0.0, 
+                    np.sqrt(2) / np.sqrt(keep_prob*output_dim))
 
-            if weight_norm and l in self.norm_layers:
-                lin = nn.utils.weight_norm(lin)
+            if self.use_weight_norm and layer_idx in self.normalized_layers:
+                linear_layer = nn.utils.weight_norm(linear_layer)
 
-            setattr(self, "lin" + str(l), lin)
+            # setattr(self, "linear_layer" + str(layer_idx), linear_layer)
+
+            # 动态地为类实例添加属性
+            setattr(self, f"linear_layer{layer_idx}", linear_layer)
         
         self.use_activation = not activation == 'None'
 
         if self.use_activation:
-            self.last_activation = utils.get_class(activation)()
+            self.last_activation_layer = utils.get_class(activation)()
         
         self.relu = nn.ReLU()
-
-        self.dropout_prob = dropout_prob
-        self.dropout = dropout
 
     def forward(self, input):
         xyz = input[:, -3:]
 
-        if input.shape[1] > 3 and self.latent_dropout:
+        if input.shape[1] > 3 and self.use_latent_dropout:
             latent_vecs = input[:, :-3]
             latent_vecs = F.dropout(latent_vecs, p=0.2, training=self.training)
             x = torch.cat([latent_vecs, xyz], 1)
@@ -160,9 +185,9 @@ class Decoder(nn.Module):
 
         for l in range(0, self.num_layers - 1):
             lin = getattr(self, "lin" + str(l))
-            if l in self.latent_in:
+            if l in self.latent_input_layers:
                 x = torch.cat([x, input], 1) /np.sqrt(2)
-            elif l != 0 and self.xyz_in_all:
+            elif l != 0 and self.use_xyz_in_all:
                 x = torch.cat([x, xyz], 1)/np.sqrt(2)
             x = lin(x)
 
@@ -172,7 +197,7 @@ class Decoder(nn.Module):
                     x = F.dropout(x, p=self.dropout_prob, training=self.training)
 
         if self.use_activation:
-            x = self.last_activation(x) + 1.0 * x
+            x = self.last_activation_layer(x) + 1.0 * x
 
         return x
 
