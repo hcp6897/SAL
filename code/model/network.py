@@ -1,9 +1,10 @@
 import numpy as np
-import utils.general as utils
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from torch import distributions as dist
+
+import utils.general as utils
 
 
 def maxpool(x, dim=-1, keepdim=False):
@@ -12,7 +13,7 @@ def maxpool(x, dim=-1, keepdim=False):
     return out
 
 
-class SimplePointnet_VAE(nn.Module):
+class SimplePointNet_VAE(nn.Module):
     ''' PointNet-based encoder network. 
     Based on: https://github.com/autonomousvision/occupancy_networks
 
@@ -51,9 +52,9 @@ class SimplePointnet_VAE(nn.Module):
         # 最大池化
         self.pool = maxpool
 
-    def forward(self, p):
+    def forward(self, pos):
         # 空间点位置编码
-        net = self.fc_pos(p)
+        net = self.fc_pos(pos)
         
         # 第0层
         net = self.fc_0(self.actvn(net))
@@ -209,7 +210,7 @@ class SALNetwork(nn.Module):
         super().__init__()
         
         if latent_size > 0:
-            self.encoder = SimplePointnet_VAE(hidden_dim=2*latent_size, c_dim=latent_size)
+            self.encoder = SimplePointNet_VAE(hidden_dim=2*latent_size, c_dim=latent_size)
         else:
             self.encoder = None
 
@@ -219,25 +220,30 @@ class SALNetwork(nn.Module):
         self.is_decode_mnfld_pnts = conf.get_bool('is_decode_mnfld_pnts')
 
     def forward(self, non_mnfld_pnts, mnfld_pnts):
-
-        if not self.encoder is None:
+        # 编码器
+        if self.encoder is not None:
             # encode manifold points to latent space: q(z|x)
             q_latent_mean, q_latent_std = self.encoder(mnfld_pnts)
-
+            
+            # Normal distribution with mean and std. 标准差std不能为负数.
             q_z = dist.Normal(q_latent_mean, torch.exp(q_latent_std))
-            latent = q_z.rsample()
+            # 产生一个指定正态分布的样本
+            latent_vec = q_z.rsample()
 
             latent_reg = 1.0e-3*(q_latent_mean.abs().mean(dim=-1) + \
                 (q_latent_std + 1).abs().mean(dim=-1))
 
             # concatenate latent vector to non-manfiold points
             non_mnfld_pnts = torch.cat(
-                [latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], 
+                [latent_vec.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], 
                 dim=-1)
         else:
             latent_reg = None
 
+        # 解码 non-manifold points (non_mnfld_pnts + latent_vec)
         nonmanifold_pnts_pred = self.decoder(non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1]))
+
+        # 解码 manifold points 
         manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) \
             if self.is_decode_mnfld_pnts else None
 
