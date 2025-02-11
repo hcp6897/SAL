@@ -9,32 +9,32 @@ import utils.general as utils
 
 def maxpool(x, dim=-1, keepdim=False):
     out, _ = x.max(dim=dim, keepdim=keepdim)
-    
+
     return out
 
 
 class SimplePointNet_VAE(nn.Module):
-    ''' PointNet-based encoder network. 
+    """PointNet-based encoder network.
     Based on: https://github.com/autonomousvision/occupancy_networks
 
     Args:
         c_dim (int): dimension of latent code c
         dim (int): input points dimension
         hidden_dim (int): hidden dimension of the network
-    '''
+    """
 
     def __init__(self, c_dim=128, dim=3, hidden_dim=128):
         super().__init__()
         self.c_dim = c_dim
 
         # 空间点位置编码
-        self.fc_pos = nn.Linear(dim, 2*hidden_dim)
+        self.fc_pos = nn.Linear(dim, 2 * hidden_dim)
 
         # 网络层
-        self.fc_0 = nn.Linear(2*hidden_dim, hidden_dim)
-        self.fc_1 = nn.Linear(2*hidden_dim, hidden_dim)
-        self.fc_2 = nn.Linear(2*hidden_dim, hidden_dim)
-        self.fc_3 = nn.Linear(2*hidden_dim, hidden_dim)
+        self.fc_0 = nn.Linear(2 * hidden_dim, hidden_dim)
+        self.fc_1 = nn.Linear(2 * hidden_dim, hidden_dim)
+        self.fc_2 = nn.Linear(2 * hidden_dim, hidden_dim)
+        self.fc_3 = nn.Linear(2 * hidden_dim, hidden_dim)
 
         # 输出层
         self.fc_mean = nn.Linear(hidden_dim, c_dim)
@@ -55,7 +55,7 @@ class SimplePointNet_VAE(nn.Module):
     def forward(self, pos):
         # 空间点位置编码
         net = self.fc_pos(pos)
-        
+
         # 第0层
         net = self.fc_0(self.actvn(net))
         pooled = self.pool(net, dim=1, keepdim=True).expand(net.size())
@@ -125,11 +125,11 @@ class Decoder(nn.Module):
 
         self.dropout_layers = dropout_layers
         self.dropout_prob = dropout_prob
-        
+
         self.use_latent_dropout = use_latent_dropout
         if self.use_latent_dropout:
             self.lat_dp = nn.Dropout(0.2)
-        
+
         # 创建网络层
         for layer_idx in range(0, self.num_layers - 1):
             if layer_idx + 1 in self.latent_input_layers:
@@ -138,7 +138,7 @@ class Decoder(nn.Module):
                 output_dim = layer_dims[layer_idx + 1]
                 if self.use_xyz_in_all and layer_idx != self.num_layers - 2:
                     output_dim -= 3
-            
+
             linear_layer = nn.Linear(layer_dims[layer_idx], output_dim)
 
             if layer_idx in self.dropout_layers:
@@ -148,16 +148,20 @@ class Decoder(nn.Module):
 
             if layer_idx == self.num_layers - 2:
                 torch.nn.init.normal_(
-                    linear_layer.weight, 
-                    mean=2*np.sqrt(np.pi) / np.sqrt(keep_prob * layer_dims[layer_idx]), 
-                    std=0.000001)
+                    linear_layer.weight,
+                    mean=2
+                    * np.sqrt(np.pi)
+                    / np.sqrt(keep_prob * layer_dims[layer_idx]),
+                    std=0.000001,
+                )
                 torch.nn.init.constant_(linear_layer.bias, -1.0)
             else:
                 torch.nn.init.constant_(linear_layer.bias, 0.0)
                 torch.nn.init.normal_(
-                    linear_layer.weight, 
-                    0.0, 
-                    np.sqrt(2) / np.sqrt(keep_prob*output_dim))
+                    linear_layer.weight,
+                    0.0,
+                    np.sqrt(2) / np.sqrt(keep_prob * output_dim),
+                )
 
             if self.use_weight_norm and layer_idx in self.normalized_layers:
                 linear_layer = nn.utils.weight_norm(linear_layer)
@@ -166,12 +170,12 @@ class Decoder(nn.Module):
 
             # 动态地为类实例添加属性
             setattr(self, f"linear_layer{layer_idx}", linear_layer)
-        
-        self.use_activation = not activation == 'None'
+
+        self.use_activation = not activation == "None"
 
         if self.use_activation:
             self.last_activation_layer = utils.get_class(activation)()
-        
+
         self.relu = nn.ReLU()
 
     def forward(self, input):
@@ -187,9 +191,9 @@ class Decoder(nn.Module):
         for layer_idx in range(0, self.num_layers - 1):
             linear_layer = getattr(self, "linear_layer" + str(layer_idx))
             if layer_idx in self.latent_input_layers:
-                x = torch.cat([x, input], 1) /np.sqrt(2)
+                x = torch.cat([x, input], 1) / np.sqrt(2)
             elif layer_idx != 0 and self.use_xyz_in_all:
-                x = torch.cat([x, xyz], 1)/np.sqrt(2)
+                x = torch.cat([x, xyz], 1) / np.sqrt(2)
 
             x = linear_layer(x)
 
@@ -208,47 +212,59 @@ class SALNetwork(nn.Module):
 
     def __init__(self, conf, latent_size):
         super().__init__()
-        
+
         if latent_size > 0:
-            self.encoder = SimplePointNet_VAE(hidden_dim=2*latent_size, c_dim=latent_size)
+            self.encoder = SimplePointNet_VAE(
+                hidden_dim=2 * latent_size, c_dim=latent_size
+            )
         else:
             self.encoder = None
 
-        self.decoder = Decoder(latent_size=latent_size, **conf.get_config('decoder'))
-        
+        self.decoder = Decoder(latent_size=latent_size, **conf.get_config("decoder"))
+
         # 是否解码 manifold points
-        self.is_decode_mnfld_pnts = conf.get_bool('is_decode_mnfld_pnts')
+        self.is_decode_mnfld_pnts = conf.get_bool("is_decode_mnfld_pnts")
 
     def forward(self, non_mnfld_pnts, mnfld_pnts):
         # 编码器
         if self.encoder is not None:
             # encode manifold points to latent space: q(z|x)
             q_latent_mean, q_latent_std = self.encoder(mnfld_pnts)
-            
+
             # Normal distribution with mean and std. 标准差std不能为负数.
             q_z = dist.Normal(q_latent_mean, torch.exp(q_latent_std))
             # 产生一个指定正态分布的样本
-            latent_vec = q_z.rsample()
+            latent = q_z.rsample()
 
-            latent_reg = 1.0e-3*(q_latent_mean.abs().mean(dim=-1) + \
-                (q_latent_std + 1).abs().mean(dim=-1))
+            latent_reg = 1.0e-3 * (
+                q_latent_mean.abs().mean(dim=-1) + (q_latent_std + 1).abs().mean(dim=-1)
+            )
 
             # concatenate latent vector to non-manfiold points
             non_mnfld_pnts = torch.cat(
-                [latent_vec.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1), non_mnfld_pnts], 
-                dim=-1)
+                [
+                    latent.unsqueeze(1).repeat(1, non_mnfld_pnts.shape[1], 1),
+                    non_mnfld_pnts,
+                ],
+                dim=-1,
+            )
         else:
             latent_reg = None
 
         # 解码 non-manifold points (non_mnfld_pnts + latent_vec)
-        nonmanifold_pnts_pred = self.decoder(non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1]))
+        nonmanifold_pnts_pred = self.decoder(
+            non_mnfld_pnts.view(-1, non_mnfld_pnts.shape[-1])
+        )
 
-        # 解码 manifold points 
-        manifold_pnts_pred =  self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1])) \
-            if self.is_decode_mnfld_pnts else None
+        # 解码 manifold points
+        manifold_pnts_pred = (
+            self.decoder(mnfld_pnts.view(-1, mnfld_pnts.shape[-1]))
+            if self.is_decode_mnfld_pnts
+            else None
+        )
 
         return {
-            "manifold_pnts_pred" : manifold_pnts_pred,
-            "nonmanifold_pnts_pred" : nonmanifold_pnts_pred,
-            "latent_reg" : latent_reg
-            }
+            "manifold_pnts_pred": manifold_pnts_pred,
+            "nonmanifold_pnts_pred": nonmanifold_pnts_pred,
+            "latent_reg": latent_reg,
+        }
