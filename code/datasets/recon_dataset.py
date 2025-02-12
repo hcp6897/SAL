@@ -9,10 +9,18 @@ import utils.general as utils
 
 class ReconDataSet(data.Dataset):
 
-    def __init__(self, split, dataset_path, dist_file_name):
+    def __init__(self, split: str, dataset_path: str, dist_file_name: str):
+        """初始化 Recon 数据集.
+
+        Args:
+            split (str):  数据集划分（未使用）.
+            dataset_path (str):  3D模型文件路径.
+            dist_file_name (str): 距离场文件名后缀（未使用）.
+        """
         model = trimesh.load(dataset_path)
 
-        if not type(model) == trimesh.PointCloud:
+        # 如果模型是点云，则直接使用顶点数据; 否则，对模型进行采样以获取点云数据.
+        if not isinstance(model, trimesh.PointCloud):
             model = utils.as_mesh(trimesh.load(dataset_path))
             if model.faces.shape[0] > 0:
                 self.points = sample_surface(model, 250000)[0]
@@ -21,10 +29,12 @@ class ReconDataSet(data.Dataset):
         else:
             self.points = model.vertices
 
+        # 将点云数据归一化到单位球面上.
         self.points = self.points - self.points.mean(0, keepdims=True)
         scale = np.abs(self.points).max()
         self.points = self.points / scale
 
+        # 计算点云数据的距离场.
         sigmas = []
 
         ptree = cKDTree(self.points)
@@ -60,7 +70,14 @@ class ReconDataSet(data.Dataset):
         self.dists = np.concatenate([sample, np.expand_dims(dists, axis=-1)], axis=-1)
         self.npyfiles_mnfld = [dataset_path]
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """获取数据集中指定索引的数据.
+
+        从points和dists中随机采样128^2个点, 并返回采样后的点云数据、距离场数据和索引.
+
+        Args:
+            index (int): 数据索引.
+        """
         point_set_mnlfld = torch.from_numpy(self.points).float()
 
         sample_non_mnfld = torch.from_numpy(self.dists).float()
